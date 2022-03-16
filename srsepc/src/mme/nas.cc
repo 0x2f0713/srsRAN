@@ -322,9 +322,9 @@ bool nas::handle_imsi_attach_request_known_ue(nas*                              
   gtpc->send_delete_session_request(nas_ctx->m_emm_ctx.imsi);
 
   // Release previous context in the eNB, if present
-  if (nas_ctx->m_ecm_ctx.mme_ue_s1ap_id != 0) {
-    s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
-  }
+  // if (nas_ctx->m_ecm_ctx.mme_ue_s1ap_id != 0) {
+  //   s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+  // }
   // Delete previous NAS context
   s1ap->delete_ue_ctx(nas_ctx->m_emm_ctx.imsi);
 
@@ -506,9 +506,9 @@ bool nas::handle_guti_attach_request_known_ue(nas*                              
       // Delete previous Ctx, restart authentication
       // Detaching previoulsy attached UE.
       gtpc->send_delete_session_request(emm_ctx->imsi);
-      if (ecm_ctx->mme_ue_s1ap_id != 0) {
-        s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
-      }
+      // if (ecm_ctx->mme_ue_s1ap_id != 0) {
+      //   s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
+      // }
     }
     sec_ctx->ul_nas_count = 0;
     sec_ctx->dl_nas_count = 0;
@@ -643,16 +643,16 @@ bool nas::handle_service_request(uint32_t                m_tmsi,
   if (mac_valid) {
     srsran::console("Service Request -- Short MAC valid\n");
     nas_logger.info("Service Request -- Short MAC valid");
-    if (ecm_ctx->state == ECM_STATE_CONNECTED) {
-      nas_logger.error("Service Request -- User is ECM CONNECTED");
+    // if (ecm_ctx->state == ECM_STATE_CONNECTED) {
+    //   nas_logger.error("Service Request -- User is ECM CONNECTED");
 
-      // Release previous context
-      nas_logger.info("Service Request -- Releasing previouse ECM context. eNB S1AP Id %d, MME UE S1AP Id %d",
-                      ecm_ctx->enb_ue_s1ap_id,
-                      ecm_ctx->mme_ue_s1ap_id);
-      s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
-      s1ap->release_ue_ecm_ctx(ecm_ctx->mme_ue_s1ap_id);
-    }
+    //   // Release previous context
+    //   nas_logger.info("Service Request -- Releasing previouse ECM context. eNB S1AP Id %d, MME UE S1AP Id %d",
+    //                   ecm_ctx->enb_ue_s1ap_id,
+    //                   ecm_ctx->mme_ue_s1ap_id);
+    //   s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
+    //   s1ap->release_ue_ecm_ctx(ecm_ctx->mme_ue_s1ap_id);
+    // }
 
     ecm_ctx->enb_ue_s1ap_id = enb_ue_s1ap_id;
 
@@ -703,8 +703,8 @@ bool nas::handle_service_request(uint32_t                m_tmsi,
       nas_logger.info("Service Request -- Releasing previouse ECM context. eNB S1AP Id %d, MME UE S1AP Id %d",
                       ecm_ctx->enb_ue_s1ap_id,
                       ecm_ctx->mme_ue_s1ap_id);
-      s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
-      s1ap->release_ue_ecm_ctx(ecm_ctx->mme_ue_s1ap_id);
+      // s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
+      // s1ap->release_ue_ecm_ctx(ecm_ctx->mme_ue_s1ap_id);
     }
 
     // Reset and store context with new mme s1ap id
@@ -814,7 +814,7 @@ bool nas::handle_detach_request(uint32_t                m_tmsi,
   // eNB created new ECM context to send the detach request; this needs to be cleared.
   ecm_ctx->mme_ue_s1ap_id = s1ap->get_next_mme_ue_s1ap_id();
   ecm_ctx->enb_ue_s1ap_id = enb_ue_s1ap_id;
-  s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
+  // s1ap->send_ue_context_release_command(ecm_ctx->mme_ue_s1ap_id);
   return true;
 }
 
@@ -1324,7 +1324,7 @@ bool nas::handle_detach_request(srsran::byte_buffer_t* nas_msg)
   }
 
   if (m_ecm_ctx.mme_ue_s1ap_id != 0) {
-    m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
+    // m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
   }
   return true;
 }

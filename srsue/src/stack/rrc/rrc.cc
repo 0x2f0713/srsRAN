@@ -1155,6 +1155,7 @@ void rrc::rrc_connection_release(const std::string& cause)
 void rrc::leave_connected()
 {
   srsran::console("RRC IDLE\n");
+  srsran::console("[0x2f0713]: RRC Connected: %s\n", rrc::is_connected() ? "true" : "false");
   logger.info("Leaving RRC_CONNECTED state");
   state                 = RRC_STATE_IDLE;
   security_is_activated = false;
@@ -1652,6 +1653,7 @@ void rrc::send_ul_dcch_msg(uint32_t lcid, const ul_dcch_msg_s& msg)
 
 void rrc::write_sdu(srsran::unique_byte_buffer_t sdu)
 {
+  srsran::console("[0x2f0713]: Write SDU\n");
   if (state == RRC_STATE_IDLE) {
     logger.warning("Received ULInformationTransfer SDU when in IDLE");
     return;

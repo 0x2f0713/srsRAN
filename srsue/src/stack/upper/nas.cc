@@ -170,11 +170,15 @@ void nas::run_tti()
 void nas::clear_eps_bearer()
 {
   // Deactivate EPS bearer according to Sec. 5.5.2.2.2
+  srsran::console("[0x2f0713 nas::clear_eps_bearer()]: Clearing EPS bearer context\n");
   logger.debug("Clearing EPS bearer context");
   for (const auto& bearer : eps_bearer) {
     gw->deactivate_eps_bearer(bearer.second.eps_bearer_id);
   }
   eps_bearer.clear();
+  // Reattach
+  srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
+  start_attach_request(srsran::establishment_cause_t::mo_data);
 }
 
 /*******************************************************************************
@@ -287,12 +291,14 @@ bool nas::switch_off()
 
 bool nas::enable_data()
 {
+  srsran::console("[0x2f0713 nas::enable_data]: Enabling data services\n");
   logger.info("Enabling data services");
   return switch_on();
 }
 
 bool nas::disable_data()
 {
+  srsran::console("[0x2f0713 nas::disable_data]: Disabling data services\n");
   logger.info("Disabling data services");
   detach_request(false);
   return true;
@@ -305,12 +311,15 @@ bool nas::disable_data()
  */
 void nas::start_attach_request(srsran::establishment_cause_t cause_)
 {
+  srsran::console("[0x2f0713 nas::start_attach_request]: Attach Request with cause %s.\n",to_string(cause_).c_str());
   logger.info("Attach Request with cause %s.", to_string(cause_).c_str());
 
   if (state.get_state() != emm_state_t::state_t::deregistered) {
     logger.info("NAS in invalid state for Attach Request");
+    srsran::console("[0x2f0713]: NAS in invalid state for Attach Request\n");
     logger.info("Attach request ignored. State = %s", state.get_full_state_text().c_str());
-    return;
+    srsran::console("[0x2f0713]: Attach request ignored. State = %s\n",state.get_full_state_text().c_str());
+    // return;
   }
 
   // start T3410
@@ -336,8 +345,10 @@ void nas::start_attach_request(srsran::establishment_cause_t cause_)
 
   gen_attach_request(msg);
   if (rrc->is_connected()) {
+    srsran::console("[0x2f0713 nas::start_attach_request]: RRC Connectted\n");
     rrc->write_sdu(std::move(msg));
   } else {
+    srsran::console("[0x2f0713 nas::start_attach_request]: Initiating RRC Connection\n");
     logger.debug("Initiating RRC Connection");
     if (not rrc->connection_request(cause_, std::move(msg))) {
       logger.error("Error starting RRC connection");
@@ -391,6 +402,7 @@ void nas::start_service_request(srsran::establishment_cause_t cause_)
  */
 bool nas::detach_request(const bool switch_off)
 {
+  srsran::console("[0x2f0713 nas::detach_request]: Received request to detach in state %s\n", state.get_full_state_text().c_str());
   switch (state.get_state()) {
     case emm_state_t::state_t::deregistered:
     case emm_state_t::state_t::deregistered_initiated: // Fall-through
@@ -409,6 +421,11 @@ bool nas::detach_request(const bool switch_off)
   if (switch_off) {
     enter_emm_null();
   }
+  srsran::console("[0x2f0713 nas::detach_request]: Detached, state %s\n", state.get_full_state_text().c_str());
+  srsran::console("[0x2f0713 nas::detach_request]: RRC Connected: %s\n", rrc->is_connected() ? "true" : "false");
+  // Reattach
+  srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
+  start_attach_request(srsran::establishment_cause_t::mo_data);
   return false;
 }
 
@@ -565,6 +582,7 @@ void nas::write_pdu(uint32_t lcid, unique_byte_buffer_t pdu)
       break;
     case LIBLTE_MME_MSG_TYPE_EMM_INFORMATION:
       parse_emm_information(lcid, std::move(pdu));
+      disable_data();
       break;
     case LIBLTE_MME_MSG_TYPE_EMM_STATUS:
       parse_emm_status(lcid, std::move(pdu));
