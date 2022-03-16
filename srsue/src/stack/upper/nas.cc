@@ -177,8 +177,9 @@ void nas::clear_eps_bearer()
   }
   eps_bearer.clear();
   // Reattach
+  // start_attach_request(srsran::establishment_cause_t::mo_data);
   srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
-  start_attach_request(srsran::establishment_cause_t::mo_data);
+  enable_data();
 }
 
 /*******************************************************************************
@@ -216,7 +217,7 @@ void nas::timer_expired(uint32_t timeout_id)
     // Section 5.5.1.2.6 case c)
     attach_attempt_counter++;
 
-    srsran::console("Attach failed (attempt %d/%d)\n", attach_attempt_counter, max_attach_attempts);
+    srsran::console("Attach failed: Timer T3410 expired (attempt %d/%d)\n", attach_attempt_counter, max_attach_attempts);
     if (attach_attempt_counter < max_attach_attempts) {
       logger.warning("Timer T3410 expired after attach attempt %d/%d: starting T3411",
                      attach_attempt_counter,
@@ -293,7 +294,9 @@ bool nas::enable_data()
 {
   srsran::console("[0x2f0713 nas::enable_data]: Enabling data services\n");
   logger.info("Enabling data services");
-  return switch_on();
+  state.set_deregistered(emm_state_t::deregistered_substate_t::attach_needed);
+  return true;
+  // return switch_on();
 }
 
 bool nas::disable_data()
@@ -319,7 +322,7 @@ void nas::start_attach_request(srsran::establishment_cause_t cause_)
     srsran::console("[0x2f0713]: NAS in invalid state for Attach Request\n");
     logger.info("Attach request ignored. State = %s", state.get_full_state_text().c_str());
     srsran::console("[0x2f0713]: Attach request ignored. State = %s\n",state.get_full_state_text().c_str());
-    // return;
+    return;
   }
 
   // start T3410
@@ -425,7 +428,8 @@ bool nas::detach_request(const bool switch_off)
   srsran::console("[0x2f0713 nas::detach_request]: RRC Connected: %s\n", rrc->is_connected() ? "true" : "false");
   // Reattach
   srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
-  start_attach_request(srsran::establishment_cause_t::mo_data);
+  // start_attach_request(srsran::establishment_cause_t::mo_data);
+  enable_data();
   return false;
 }
 
