@@ -16,6 +16,8 @@ The srsRAN suite includes:
 
 For application features, build instructions and user guides see the [srsRAN documentation](https://docs.srsran.com).
 
+This branch is for testing attach/detach preformance purpose with ZeroMQ RF.
+
 For license details, see LICENSE file.
 
 Support
