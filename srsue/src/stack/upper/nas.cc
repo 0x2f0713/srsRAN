@@ -178,8 +178,8 @@ void nas::clear_eps_bearer()
   eps_bearer.clear();
   // Reattach
   // start_attach_request(srsran::establishment_cause_t::mo_data);
-  srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
-  enable_data();
+  // srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
+  // enable_data();
 }
 
 /*******************************************************************************
@@ -427,9 +427,9 @@ bool nas::detach_request(const bool switch_off)
   srsran::console("[0x2f0713 nas::detach_request]: Detached, state %s\n", state.get_full_state_text().c_str());
   srsran::console("[0x2f0713 nas::detach_request]: RRC Connected: %s\n", rrc->is_connected() ? "true" : "false");
   // Reattach
-  srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
+  // srsran::console("[0x2f0713 nas::detach_request]: Start attach\n");
   // start_attach_request(srsran::establishment_cause_t::mo_data);
-  enable_data();
+  // enable_data();
   return false;
 }
 
