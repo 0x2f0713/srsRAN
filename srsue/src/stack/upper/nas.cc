@@ -295,6 +295,7 @@ bool nas::disable_data()
 {
   logger.info("Disabling data services");
   detach_request(false);
+  enable_data();
   return true;
 }
 
@@ -565,6 +566,7 @@ void nas::write_pdu(uint32_t lcid, unique_byte_buffer_t pdu)
       break;
     case LIBLTE_MME_MSG_TYPE_EMM_INFORMATION:
       parse_emm_information(lcid, std::move(pdu));
+      disable_data();
       break;
     case LIBLTE_MME_MSG_TYPE_EMM_STATUS:
       parse_emm_status(lcid, std::move(pdu));
