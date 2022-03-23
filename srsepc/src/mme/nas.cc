@@ -973,6 +973,7 @@ bool nas::handle_attach_request(srsran::byte_buffer_t* nas_rx)
     // Save attach request type
     m_emm_ctx.attach_type = attach_req.eps_attach_type;
 
+    // TODO: Add Attach Reject msg
     // Get Authentication Vectors from HSS
     if (!m_hss->gen_auth_info_answer(
             m_emm_ctx.imsi, m_sec_ctx.k_asme, m_sec_ctx.autn, m_sec_ctx.rand, m_sec_ctx.xres)) {
@@ -1213,6 +1214,7 @@ bool nas::handle_identity_response(srsran::byte_buffer_t* nas_rx)
   // Set UE's IMSI
   m_emm_ctx.imsi = imsi;
 
+  // TODO: Add Attach Reject msg here
   // Get Authentication Vectors from HSS
   if (!m_hss->gen_auth_info_answer(imsi, m_sec_ctx.k_asme, m_sec_ctx.autn, m_sec_ctx.rand, m_sec_ctx.xres)) {
     srsran::console("User not found. IMSI %015" PRIu64 "\n", imsi);
@@ -1307,6 +1309,7 @@ bool nas::handle_authentication_failure(srsran::byte_buffer_t* nas_rx)
         m_logger.info("Resynchronization failed. IMSI %015" PRIu64 "", m_emm_ctx.imsi);
         return false;
       }
+      // TODO:
       // Get Authentication Vectors from HSS
       if (!m_hss->gen_auth_info_answer(
               m_emm_ctx.imsi, m_sec_ctx.k_asme, m_sec_ctx.autn, m_sec_ctx.rand, m_sec_ctx.xres)) {
