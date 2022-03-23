@@ -272,6 +272,26 @@ bool nas::handle_imsi_attach_request_unknown_ue(uint32_t                        
                                  nas_ctx->m_sec_ctx.xres)) {
     srsran::console("User not found. IMSI %015" PRIu64 "\n", nas_ctx->m_emm_ctx.imsi);
     nas_logger.info("User not found. IMSI %015" PRIu64 "", nas_ctx->m_emm_ctx.imsi);
+    // Pack NAS Authentication Request in Downlink NAS Transport msg
+    nas_tx = srsran::make_byte_buffer();
+    if (nas_tx == nullptr) {
+      nas_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+      return false;
+    }
+    nas_ctx->pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
+
+    // Send reply to eNB
+    s1ap->send_downlink_nas_transport(
+        nas_ctx->m_ecm_ctx.enb_ue_s1ap_id, nas_ctx->m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), nas_ctx->m_ecm_ctx.enb_sri);
+    srsran::console("send_ue_context_release_command\n");
+    // nas* nas_ctx = s1ap->find_nas_ctx_from_mme_ue_s1ap_id(mme_ue_s1ap_id);
+    // if (nas_ctx == NULL) {
+    //   m_logger.error("Error finding NAS context when sending UE Context Setup Release");
+    //   return false;
+    // }
+    // nas_ctx->m_ecm_ctx.mme_ue_s1ap_id = s1ap->get_next_mme_ue_s1ap_id();
+    // nas_ctx->m_ecm_ctx.enb_ue_s1ap_id = enb_ue_s1ap_id;
+    s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
     return false;
   }
 
@@ -1395,8 +1415,8 @@ bool nas::pack_security_mode_command(srsran::byte_buffer_t* nas_buffer)
     sm_cmd.imeisv_req = LIBLTE_MME_IMEISV_REQUESTED;
   }
 
-  sm_cmd.nonce_ue_present   = false;
-  sm_cmd.nonce_mme_present  = false;
+  sm_cmd.nonce_ue_present  = false;
+  sm_cmd.nonce_mme_present = false;
 
   uint8_t           sec_hdr_type = 3;
   LIBLTE_ERROR_ENUM err          = liblte_mme_pack_security_mode_command_msg(
@@ -1586,6 +1606,30 @@ bool nas::pack_attach_accept(srsran::byte_buffer_t* nas_buffer)
 
   // Log attach accept info
   m_logger.info("Packed Attach Accept");
+  return true;
+}
+
+bool nas::pack_attach_reject(srsran::byte_buffer_t* nas_buffer, uint8_t emm_cause)
+{
+  m_logger.info("Packing Attach Reject");
+
+  LIBLTE_MME_ATTACH_REJECT_MSG_STRUCT attach_reject;
+
+  attach_reject.t3446_value_present = false;
+  attach_reject.esm_msg_present     = false;
+  attach_reject.emm_cause           = emm_cause;
+  LIBLTE_ERROR_ENUM err = liblte_mme_pack_attach_reject_msg(&attach_reject, (LIBLTE_BYTE_MSG_STRUCT*)nas_buffer);
+  if (err != LIBLTE_SUCCESS) {
+    m_logger.error("Error packing Service Reject");
+    srsran::console("Error packing Service Reject\n");
+    return false;
+  }
+  m_sec_ctx.dl_nas_count++;
+  // Don't encrypt NAS message
+  // cipher_encrypt(nas_buffer);
+
+  // Log attach accept info
+  m_logger.info("Packed Attach Reject");
   return true;
 }
 
