@@ -264,6 +264,12 @@ bool nas::handle_imsi_attach_request_unknown_ue(uint32_t                        
   // Save attach request type
   nas_ctx->m_emm_ctx.attach_type = attach_req.eps_attach_type;
 
+  // Set ECM state ECM_STATE_CONNECTED
+  nas_ctx->m_ecm_ctx.state = ECM_STATE_CONNECTED;
+  // Save the UE NAS context to IMSI_MAP and MME_UE_S1AP_MAP
+  s1ap->add_nas_ctx_to_imsi_map(nas_ctx);
+  s1ap->add_nas_ctx_to_mme_ue_s1ap_id_map(nas_ctx);
+
   // Get Authentication Vectors from HSS
   if (!hss->gen_auth_info_answer(nas_ctx->m_emm_ctx.imsi,
                                  nas_ctx->m_sec_ctx.k_asme,
@@ -272,7 +278,7 @@ bool nas::handle_imsi_attach_request_unknown_ue(uint32_t                        
                                  nas_ctx->m_sec_ctx.xres)) {
     srsran::console("User not found. IMSI %015" PRIu64 "\n", nas_ctx->m_emm_ctx.imsi);
     nas_logger.info("User not found. IMSI %015" PRIu64 "", nas_ctx->m_emm_ctx.imsi);
-    // Pack NAS Authentication Request in Downlink NAS Transport msg
+    // Pack NAS Attach Reject in Downlink NAS Transport msg
     nas_tx = srsran::make_byte_buffer();
     if (nas_tx == nullptr) {
       nas_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
@@ -283,15 +289,9 @@ bool nas::handle_imsi_attach_request_unknown_ue(uint32_t                        
     // Send reply to eNB
     s1ap->send_downlink_nas_transport(
         nas_ctx->m_ecm_ctx.enb_ue_s1ap_id, nas_ctx->m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), nas_ctx->m_ecm_ctx.enb_sri);
-    srsran::console("send_ue_context_release_command\n");
-    // nas* nas_ctx = s1ap->find_nas_ctx_from_mme_ue_s1ap_id(mme_ue_s1ap_id);
-    // if (nas_ctx == NULL) {
-    //   m_logger.error("Error finding NAS context when sending UE Context Setup Release");
-    //   return false;
-    // }
-    // nas_ctx->m_ecm_ctx.mme_ue_s1ap_id = s1ap->get_next_mme_ue_s1ap_id();
-    // nas_ctx->m_ecm_ctx.enb_ue_s1ap_id = enb_ue_s1ap_id;
-    s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+    if (nas_ctx->m_ecm_ctx.mme_ue_s1ap_id != 0) {
+      s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+    }
     return false;
   }
 
@@ -299,11 +299,8 @@ bool nas::handle_imsi_attach_request_unknown_ue(uint32_t                        
   // Here we assume a new security context thus a new eKSI
   nas_ctx->m_sec_ctx.eksi = 0;
 
-  // Save the UE context
-  s1ap->add_nas_ctx_to_imsi_map(nas_ctx);
-  s1ap->add_nas_ctx_to_mme_ue_s1ap_id_map(nas_ctx);
   s1ap->add_ue_to_enb_set(enb_sri->sinfo_assoc_id, nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
-
+  
   // Pack NAS Authentication Request in Downlink NAS Transport msg
   nas_tx = srsran::make_byte_buffer();
   if (nas_tx == nullptr) {
@@ -393,6 +390,7 @@ bool nas::handle_guti_attach_request_unknown_ue(uint32_t                        
   nas_ctx->m_emm_ctx.procedure_transaction_id = pdn_con_req.proc_transaction_id;
 
   // Set ECM context
+  nas_ctx->m_ecm_ctx.state          = ECM_STATE_CONNECTED;
   nas_ctx->m_ecm_ctx.enb_ue_s1ap_id = enb_ue_s1ap_id;
   nas_ctx->m_ecm_ctx.mme_ue_s1ap_id = s1ap->get_next_mme_ue_s1ap_id();
 
@@ -466,6 +464,7 @@ bool nas::handle_guti_attach_request_known_ue(nas*                              
         "GUTI Attach -- NAS Integrity OK. UL count %d, DL count %d", sec_ctx->ul_nas_count, sec_ctx->dl_nas_count);
 
     // Create new MME UE S1AP Identity
+    ecm_ctx->state          = ECM_STATE_CONNECTED;
     ecm_ctx->mme_ue_s1ap_id = s1ap->get_next_mme_ue_s1ap_id();
     ecm_ctx->enb_ue_s1ap_id = enb_ue_s1ap_id;
 
@@ -570,6 +569,22 @@ bool nas::handle_guti_attach_request_known_ue(nas*                              
     if (!hss->gen_auth_info_answer(emm_ctx->imsi, sec_ctx->k_asme, sec_ctx->autn, sec_ctx->rand, sec_ctx->xres)) {
       srsran::console("User not found. IMSI %015" PRIu64 "\n", emm_ctx->imsi);
       nas_logger.info("User not found. IMSI %015" PRIu64 "", emm_ctx->imsi);
+      // Pack NAS Attach Reject in Downlink NAS Transport msg
+      nas_tx = srsran::make_byte_buffer();
+      if (nas_tx == nullptr) {
+        nas_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+        return false;
+      }
+      nas_ctx->pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
+
+      // Send reply to eNB
+      s1ap->send_downlink_nas_transport(nas_ctx->m_ecm_ctx.enb_ue_s1ap_id,
+                                        nas_ctx->m_ecm_ctx.mme_ue_s1ap_id,
+                                        nas_tx.get(),
+                                        nas_ctx->m_ecm_ctx.enb_sri);
+      if (nas_ctx->m_ecm_ctx.mme_ue_s1ap_id != 0) {
+        s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+      }
       return false;
     }
 
