@@ -571,6 +571,7 @@ int spgw::gtpc::init_ue_ip(spgw_args_t* args, const std::map<std::string, uint64
       perror("inet_pton");
       return SRSRAN_ERROR;
     }
+    m_logger.debug("IP: %s", inet_ntoa(ue_addr));
     ue_addr.s_addr = ue_addr.s_addr + htonl(n);
 
     std::map<std::string, uint64_t>::const_iterator iter = ip_to_imsi.find(inet_ntoa(ue_addr));

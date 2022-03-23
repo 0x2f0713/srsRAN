@@ -64,7 +64,7 @@ int nas::init(usim_interface_nas* usim_, rrc_interface_nas* rrc_, gw_interface_n
   usim = usim_;
   rrc  = rrc_;
   gw   = gw_;
-
+  first_attached = false;
   if (!usim->get_home_plmn_id(&home_plmn)) {
     logger.error("Getting Home PLMN Id from USIM. Defaulting to 001-01");
     home_plmn.from_number(61441, 65281); // This is 001 01
@@ -133,6 +133,11 @@ void nas::run_tti()
 {
   // Process PLMN selection ongoing procedures
   callbacks.run();
+
+  if(!rrc->is_connected() && first_attached && !running_attach) {
+    running_attach = true;
+    switch_on();
+  }
 
   // Transmit intiating messages if necessary
   switch (state.get_state()) {
@@ -281,6 +286,7 @@ bool nas::switch_on()
 bool nas::switch_off()
 {
   logger.info("Switching off");
+  running_attach = false;
   detach_request(true);
   return true;
 }
@@ -566,7 +572,8 @@ void nas::write_pdu(uint32_t lcid, unique_byte_buffer_t pdu)
       break;
     case LIBLTE_MME_MSG_TYPE_EMM_INFORMATION:
       parse_emm_information(lcid, std::move(pdu));
-      disable_data();
+      first_attached = true;
+      switch_off();
       break;
     case LIBLTE_MME_MSG_TYPE_EMM_STATUS:
       parse_emm_status(lcid, std::move(pdu));

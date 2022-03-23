@@ -92,7 +92,8 @@ private:
   rrc_interface_nas*    rrc  = nullptr;
   usim_interface_nas*   usim = nullptr;
   gw_interface_nas*     gw   = nullptr;
-
+  bool first_attached;
+  bool running_attach = false;
   bool running = false;
 
   nas_args_t  cfg   = {};
