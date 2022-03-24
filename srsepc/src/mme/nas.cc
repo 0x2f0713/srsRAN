@@ -89,6 +89,8 @@ bool nas::handle_attach_request(uint32_t                enb_ue_s1ap_id,
   s1ap_interface_nas* s1ap = itf.s1ap;
   hss_interface_nas*  hss  = itf.hss;
   gtpc_interface_nas* gtpc = itf.gtpc;
+  
+  
 
   // Get NAS Attach Request and PDN connectivity request messages
   LIBLTE_ERROR_ENUM err = liblte_mme_unpack_attach_request_msg((LIBLTE_BYTE_MSG_STRUCT*)nas_rx, &attach_req);
@@ -279,19 +281,21 @@ bool nas::handle_imsi_attach_request_unknown_ue(uint32_t                        
     srsran::console("User not found. IMSI %015" PRIu64 "\n", nas_ctx->m_emm_ctx.imsi);
     nas_logger.info("User not found. IMSI %015" PRIu64 "", nas_ctx->m_emm_ctx.imsi);
     // Pack NAS Attach Reject in Downlink NAS Transport msg
-    nas_tx = srsran::make_byte_buffer();
-    if (nas_tx == nullptr) {
-      nas_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
-      return false;
-    }
-    nas_ctx->pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
+    // nas_tx = srsran::make_byte_buffer();
+    // if (nas_tx == nullptr) {
+    //   nas_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+    //   return false;
+    // }
+    // nas_ctx->pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
 
-    // Send reply to eNB
-    s1ap->send_downlink_nas_transport(
-        nas_ctx->m_ecm_ctx.enb_ue_s1ap_id, nas_ctx->m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), nas_ctx->m_ecm_ctx.enb_sri);
-    if (nas_ctx->m_ecm_ctx.mme_ue_s1ap_id != 0) {
-      s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
-    }
+    // // Send reply to eNB
+    // s1ap->send_downlink_nas_transport(
+    //     nas_ctx->m_ecm_ctx.enb_ue_s1ap_id, nas_ctx->m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), nas_ctx->m_ecm_ctx.enb_sri);
+    // if (nas_ctx->m_ecm_ctx.mme_ue_s1ap_id != 0) {
+    //   s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+    //   s1ap->release_ue_ecm_ctx(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+    //   s1ap->delete_ue_ctx(imsi);
+    // }
     return false;
   }
 
@@ -584,6 +588,8 @@ bool nas::handle_guti_attach_request_known_ue(nas*                              
                                         nas_ctx->m_ecm_ctx.enb_sri);
       if (nas_ctx->m_ecm_ctx.mme_ue_s1ap_id != 0) {
         s1ap->send_ue_context_release_command(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+        s1ap->release_ue_ecm_ctx(nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
+        s1ap->delete_ue_ctx(emm_ctx->imsi);
       }
       return false;
     }
@@ -906,6 +912,8 @@ bool nas::handle_attach_request(srsran::byte_buffer_t* nas_rx)
   LIBLTE_MME_PDN_CONNECTIVITY_REQUEST_MSG_STRUCT pdn_con_req = {};
   auto&                                          nas_logger  = srslog::fetch_basic_logger("NAS");
 
+  nas_logger.info("Start Handle UplinkNASTransport Attach Request");
+
   // Get NAS Attach Request and PDN connectivity request messages
   LIBLTE_ERROR_ENUM err = liblte_mme_unpack_attach_request_msg((LIBLTE_BYTE_MSG_STRUCT*)nas_rx, &attach_req);
   if (err != LIBLTE_SUCCESS) {
@@ -1001,6 +1009,8 @@ bool nas::handle_attach_request(srsran::byte_buffer_t* nas_rx)
           m_ecm_ctx.enb_ue_s1ap_id, m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), m_ecm_ctx.enb_sri);
       if (m_ecm_ctx.mme_ue_s1ap_id != 0) {
         m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
+        m_s1ap->release_ue_ecm_ctx(m_ecm_ctx.mme_ue_s1ap_id);
+        m_s1ap->delete_ue_ctx(m_emm_ctx.imsi);
       }
       return false;
     }
@@ -1235,19 +1245,21 @@ bool nas::handle_identity_response(srsran::byte_buffer_t* nas_rx)
   if (!m_hss->gen_auth_info_answer(imsi, m_sec_ctx.k_asme, m_sec_ctx.autn, m_sec_ctx.rand, m_sec_ctx.xres)) {
     srsran::console("User not found. IMSI %015" PRIu64 "\n", imsi);
     m_logger.info("User not found. IMSI %015" PRIu64 "", imsi);
-    nas_tx = srsran::make_byte_buffer();
-    if (nas_tx == nullptr) {
-      m_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
-      return false;
-    }
-    pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
+    // nas_tx = srsran::make_byte_buffer();
+    // if (nas_tx == nullptr) {
+    //   m_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+    //   return false;
+    // }
+    // pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
 
-    // Send reply to eNB
-    m_s1ap->send_downlink_nas_transport(
-        m_ecm_ctx.enb_ue_s1ap_id, m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), m_ecm_ctx.enb_sri);
-    if (m_ecm_ctx.mme_ue_s1ap_id != 0) {
-      m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
-    }
+    // // Send reply to eNB
+    // m_s1ap->send_downlink_nas_transport(
+    //     m_ecm_ctx.enb_ue_s1ap_id, m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), m_ecm_ctx.enb_sri);
+    // if (m_ecm_ctx.mme_ue_s1ap_id != 0) {
+    //   m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
+    //   m_s1ap->release_ue_ecm_ctx(m_ecm_ctx.mme_ue_s1ap_id);
+    //   m_s1ap->delete_ue_ctx(m_emm_ctx.imsi);
+    // }
     return false;
   }
   // Identity reponse from unknown GUTI atach. Assigning new eKSI.
