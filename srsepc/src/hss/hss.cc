@@ -28,6 +28,7 @@
 #include <stdlib.h> /* srand, rand */
 #include <string>
 #include <time.h>
+#include <iostream>
 
 namespace srsepc {
 
@@ -341,6 +342,7 @@ void hss::gen_auth_info_answer_milenage(hss_ue_ctx_t* ue_ctx,
 
 void hss::gen_auth_info_answer_xor(hss_ue_ctx_t* ue_ctx, uint8_t* k_asme, uint8_t* autn, uint8_t* rand, uint8_t* xres)
 {
+  m_logger.debug("gen_auth_info_answer_xor");
   // Get K, AMF, OPC and SQN
   uint8_t* k   = ue_ctx->key;
   uint8_t* amf = ue_ctx->amf;
@@ -358,14 +360,17 @@ void hss::gen_auth_info_answer_xor(hss_ue_ctx_t* ue_ctx, uint8_t* k_asme, uint8_
 
   int i = 0;
 
+  m_logger.debug("gen_auth_info_answer_xor");
+
   // Gen RAND
   gen_rand(rand);
 
+  m_logger.debug("gen_auth_info_answer_xor");
   // Use RAND and K to compute RES, CK, IK and AK
   for (i = 0; i < 16; i++) {
     xdout[i] = k[i] ^ rand[i];
   }
-
+  
   for (i = 0; i < 16; i++) {
     xres[i] = xdout[i];
     ck[i]   = xdout[(i + 1) % 16];
@@ -420,6 +425,7 @@ void hss::gen_auth_info_answer_xor(hss_ue_ctx_t* ue_ctx, uint8_t* k_asme, uint8_
   m_logger.debug("User MCC : %x  MNC : %x ", mcc, mnc);
   m_logger.debug(k_asme, 32, "User k_asme : ");
 
+  m_logger.debug("gen_auth_info_answer_xor");
   // Generate AUTN (autn = sqn ^ ak |+| amf |+| mac)
   for (int i = 0; i < 6; i++) {
     autn[i] = sqn[i] ^ ak[i];
@@ -617,7 +623,6 @@ hss_ue_ctx_t* hss::get_ue_ctx(uint64_t imsi)
     m_logger.info("User not found. IMSI: %015" PRIu64 "", imsi);
     return nullptr;
   }
-
   return ue_ctx_it->second.get();
 }
 
