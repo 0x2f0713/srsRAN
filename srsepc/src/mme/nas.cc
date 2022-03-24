@@ -300,7 +300,7 @@ bool nas::handle_imsi_attach_request_unknown_ue(uint32_t                        
   nas_ctx->m_sec_ctx.eksi = 0;
 
   s1ap->add_ue_to_enb_set(enb_sri->sinfo_assoc_id, nas_ctx->m_ecm_ctx.mme_ue_s1ap_id);
-  
+
   // Pack NAS Authentication Request in Downlink NAS Transport msg
   nas_tx = srsran::make_byte_buffer();
   if (nas_tx == nullptr) {
@@ -899,10 +899,12 @@ bool nas::handle_tracking_area_update_request(uint32_t                m_tmsi,
  ***************************************/
 bool nas::handle_attach_request(srsran::byte_buffer_t* nas_rx)
 {
+  srsran::unique_byte_buffer_t                   nas_tx;
   uint32_t                                       m_tmsi      = 0;
   uint64_t                                       imsi        = 0;
   LIBLTE_MME_ATTACH_REQUEST_MSG_STRUCT           attach_req  = {};
   LIBLTE_MME_PDN_CONNECTIVITY_REQUEST_MSG_STRUCT pdn_con_req = {};
+  auto&                                          nas_logger  = srslog::fetch_basic_logger("NAS");
 
   // Get NAS Attach Request and PDN connectivity request messages
   LIBLTE_ERROR_ENUM err = liblte_mme_unpack_attach_request_msg((LIBLTE_BYTE_MSG_STRUCT*)nas_rx, &attach_req);
@@ -973,21 +975,35 @@ bool nas::handle_attach_request(srsran::byte_buffer_t* nas_rx)
     // Save attach request type
     m_emm_ctx.attach_type = attach_req.eps_attach_type;
 
+    // Allocate eKSI for this authentication vector
+    // Here we assume a new security context thus a new eKSI
+    m_sec_ctx.eksi = 0;
+
+    // Save the UE NAS context to IMSI_MAP and MME_UE_S1AP_MAP
+    m_s1ap->add_nas_ctx_to_imsi_map(this);
+    m_s1ap->add_nas_ctx_to_mme_ue_s1ap_id_map(this);
     // TODO: Add Attach Reject msg
     // Get Authentication Vectors from HSS
     if (!m_hss->gen_auth_info_answer(
             m_emm_ctx.imsi, m_sec_ctx.k_asme, m_sec_ctx.autn, m_sec_ctx.rand, m_sec_ctx.xres)) {
       srsran::console("User not found. IMSI %015" PRIu64 "\n", m_emm_ctx.imsi);
-      m_logger.info("User not found. IMSI %015" PRIu64 "", m_emm_ctx.imsi);
+      nas_logger.info("User not found. IMSI %015" PRIu64 "", m_emm_ctx.imsi);
+      // Pack NAS Attach Reject in Downlink NAS Transport msg
+      nas_tx = srsran::make_byte_buffer();
+      if (nas_tx == nullptr) {
+        nas_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+        return false;
+      }
+      pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
+
+      // Send reply to eNB
+      m_s1ap->send_downlink_nas_transport(
+          m_ecm_ctx.enb_ue_s1ap_id, m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), m_ecm_ctx.enb_sri);
+      if (m_ecm_ctx.mme_ue_s1ap_id != 0) {
+        m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
+      }
       return false;
     }
-
-    // Allocate eKSI for this authentication vector
-    // Here we assume a new security context thus a new eKSI
-    m_sec_ctx.eksi = 0;
-
-    // Save the UE context
-    m_s1ap->add_nas_ctx_to_imsi_map(this);
 
     // Pack NAS Authentication Request in Downlink NAS Transport msg
     srsran::unique_byte_buffer_t nas_tx = srsran::make_byte_buffer();
@@ -1219,6 +1235,19 @@ bool nas::handle_identity_response(srsran::byte_buffer_t* nas_rx)
   if (!m_hss->gen_auth_info_answer(imsi, m_sec_ctx.k_asme, m_sec_ctx.autn, m_sec_ctx.rand, m_sec_ctx.xres)) {
     srsran::console("User not found. IMSI %015" PRIu64 "\n", imsi);
     m_logger.info("User not found. IMSI %015" PRIu64 "", imsi);
+    nas_tx = srsran::make_byte_buffer();
+    if (nas_tx == nullptr) {
+      m_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+      return false;
+    }
+    pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
+
+    // Send reply to eNB
+    m_s1ap->send_downlink_nas_transport(
+        m_ecm_ctx.enb_ue_s1ap_id, m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), m_ecm_ctx.enb_sri);
+    if (m_ecm_ctx.mme_ue_s1ap_id != 0) {
+      m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
+    }
     return false;
   }
   // Identity reponse from unknown GUTI atach. Assigning new eKSI.
