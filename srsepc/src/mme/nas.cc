@@ -945,6 +945,19 @@ bool nas::handle_attach_request(srsran::byte_buffer_t* nas_rx)
       imsi += attach_req.eps_mobile_id.imsi[i] * std::pow(10, 14 - i);
     }
 
+    if (imsi == 0) {
+      nas_tx = srsran::make_byte_buffer();
+      if (nas_tx == nullptr) {
+        m_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+        return false;
+      }
+      pack_identity_request(nas_tx.get());
+      m_s1ap->send_downlink_nas_transport(m_ecm_ctx.enb_ue_s1ap_id,
+                                        m_ecm_ctx.mme_ue_s1ap_id,
+                                        nas_tx.get(),
+                                        m_ecm_ctx.enb_sri);
+      return false;
+    }
     // Save IMSI, eNB UE S1AP Id, MME UE S1AP Id and make sure UE is EMM_DEREGISTERED
     m_emm_ctx.imsi  = imsi;
     m_emm_ctx.state = EMM_STATE_DEREGISTERED;
@@ -1022,6 +1035,26 @@ bool nas::handle_attach_request(srsran::byte_buffer_t* nas_rx)
     return true;
   } else {
     m_logger.error("Attach request from known UE");
+    if (!m_hss->gen_auth_info_answer(
+            m_emm_ctx.imsi, m_sec_ctx.k_asme, m_sec_ctx.autn, m_sec_ctx.rand, m_sec_ctx.xres)) {
+      srsran::console("User not found. IMSI %015" PRIu64 "\n", m_emm_ctx.imsi);
+      nas_logger.info("User not found. IMSI %015" PRIu64 "", m_emm_ctx.imsi);
+      // Pack NAS Attach Reject in Downlink NAS Transport msg
+      nas_tx = srsran::make_byte_buffer();
+      if (nas_tx == nullptr) {
+        nas_logger.error("Couldn't allocate PDU in %s().", __FUNCTION__);
+        return false;
+      }
+      pack_attach_reject(nas_tx.get(), LIBLTE_MME_EMM_CAUSE_IMSI_UNKNOWN_IN_HSS);
+
+      // Send reply to eNB
+      m_s1ap->send_downlink_nas_transport(
+          m_ecm_ctx.enb_ue_s1ap_id, m_ecm_ctx.mme_ue_s1ap_id, nas_tx.get(), m_ecm_ctx.enb_sri);
+      if (m_ecm_ctx.mme_ue_s1ap_id != 0) {
+        m_s1ap->send_ue_context_release_command(m_ecm_ctx.mme_ue_s1ap_id);
+      }
+      return false;
+    }
   }
   return true;
 }
