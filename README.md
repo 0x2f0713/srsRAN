@@ -16,6 +16,7 @@ The srsRAN suite includes:
 
 For application features, build instructions and user guides see the [srsRAN documentation](https://docs.srsran.com).
 
+This branch implements Attach Reject msg that working.
 For license details, see LICENSE file.
 
 Support
